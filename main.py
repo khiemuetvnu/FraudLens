@@ -6,11 +6,13 @@ import uuid
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from connections.database import WriteSessionLocal
 from services.auth_service import auth_service
 from routers import auth, transactions, cases, audits
+from reset_database import reset_db
 
 
 @asynccontextmanager
@@ -62,19 +64,26 @@ app.include_router(cases.router)
 app.include_router(audits.router)
 
 
-@app.get("/", tags=["Health"])
-def root():
-    return {
-        "service": "FraudLens Analyst Workflow Module",
-        "status": "HEALTHY",
-        "version": "1.0.0",
-        "docs_url": "/docs"
-    }
+# Mount thư mục Frontend UI riêng biệt
+app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
+
+
+@app.get("/", tags=["UI"])
+def serve_dashboard():
+    """Giao diện Dashboard chính cho Fraud Analyst và Risk Lead"""
+    return FileResponse("frontend/index.html")
 
 
 @app.get("/health", tags=["Health"])
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "service": "FraudLens Analyst Workflow Module"}
+
+
+@app.post("/api/system/reset-db", tags=["System Utilities"])
+def api_reset_db():
+    """Tiện ích reset trắng dữ liệu thử nghiệm trên DB (giữ tài khoản mặc định)"""
+    reset_db()
+    return {"message": "Cơ sở dữ liệu đã được dọn sạch và khởi tạo lại tài khoản mặc định thành công!"}
 
 
 if __name__ == "__main__":

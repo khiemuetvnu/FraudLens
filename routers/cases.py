@@ -40,7 +40,7 @@ def get_review_queue(
     Hàng đợi điều tra (Review Queue):
     Sắp xếp ưu tiên rủi ro HIGH lên trước, theo thời gian khởi tạo giảm dần.
     """
-    return case_service.list_cases(
+    cases = case_service.list_cases(
         db,
         status_filter=status_filter,
         priority_filter=priority_filter,
@@ -48,6 +48,18 @@ def get_review_queue(
         skip=skip,
         limit=limit
     )
+    res_list = []
+    for c in cases:
+        r = CaseResponse.model_validate(c)
+        if c.transaction:
+            r.merchant = c.transaction.merchant
+            r.amt = c.transaction.amt
+            r.category = c.transaction.category
+            if c.transaction.score:
+                r.risk_score = c.transaction.score.risk_score
+                r.routing = c.transaction.score.routing
+        res_list.append(r)
+    return res_list
 
 
 @router.get("/{case_id}", response_model=CaseDetailResponse)

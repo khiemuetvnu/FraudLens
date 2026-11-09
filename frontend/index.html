@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FraudLens - Transaction Fraud Detection & Investigation Copilot</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/frontend/css/style.css">
+</head>
+<body class="bg-[#0b0f19] text-gray-100 min-h-screen flex flex-col font-sans">
+
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-gray-800/80 bg-slate-950/80 backdrop-blur sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <!-- Brand -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <i class="fas fa-shield-halved text-white text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-extrabold text-lg tracking-tight text-white">Fraud<span class="text-blue-500">Lens</span></span>
+                        <span class="text-[10px] font-mono font-bold bg-blue-950 text-blue-400 border border-blue-800/60 px-1.5 py-0.5 rounded">COPILOT v1.0</span>
+                    </div>
+                    <p class="text-[11px] text-gray-400 hidden sm:block">Analyst Workflow & Investigation Module</p>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="hidden md:flex items-center gap-1">
+                <button onclick="switchTab('cases')" class="nav-tab active" data-tab="cases">
+                    <i class="fas fa-inbox"></i> Hàng đợi Điều tra (Queue)
+                </button>
+                <button onclick="switchTab('special')" class="nav-tab" data-tab="special">
+                    <i class="fas fa-biohazard text-amber-400"></i> Hàng đợi Đặc biệt (FR-07)
+                </button>
+                <button onclick="switchTab('transactions')" class="nav-tab" data-tab="transactions">
+                    <i class="fas fa-play text-emerald-400"></i> Simulator & Giao dịch
+                </button>
+                <button onclick="switchTab('audits')" class="nav-tab" data-tab="audits">
+                    <i class="fas fa-history text-purple-400"></i> Audit Log (FR-08)
+                </button>
+            </nav>
+
+            <!-- User Profile & Action Bar -->
+            <div class="flex items-center gap-3">
+                <!-- Reset DB Button -->
+                <button onclick="triggerDatabaseReset()" title="Dọn sạch dữ liệu test về ban đầu" class="p-2 text-gray-400 hover:text-rose-400 hover:bg-rose-950/20 rounded-lg transition border border-transparent hover:border-rose-900/40 text-xs flex items-center gap-1.5">
+                    <i class="fas fa-trash-can"></i>
+                    <span class="hidden sm:inline">Reset DB</span>
+                </button>
+
+                <!-- User Info -->
+                <div id="user-profile-bar" class="hidden flex items-center gap-3 border-l border-gray-800 pl-3">
+                    <div class="text-right">
+                        <div id="nav-username" class="text-xs font-bold text-gray-200">analyst1</div>
+                        <span id="nav-role-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">ANALYST</span>
+                    </div>
+                    <button onclick="handleLogout()" title="Đăng xuất" class="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition">
+                        <i class="fas fa-arrow-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Mobile Navigation Tabs -->
+        <div class="md:hidden flex items-center border-t border-gray-800/80 px-2 overflow-x-auto py-1">
+            <button onclick="switchTab('cases')" class="nav-tab active text-xs whitespace-nowrap" data-tab="cases">Queue</button>
+            <button onclick="switchTab('special')" class="nav-tab text-xs whitespace-nowrap" data-tab="special">Đặc biệt</button>
+            <button onclick="switchTab('transactions')" class="nav-tab text-xs whitespace-nowrap" data-tab="transactions">Simulator</button>
+            <button onclick="switchTab('audits')" class="nav-tab text-xs whitespace-nowrap" data-tab="audits">Audit</button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <!-- ========================================================= -->
+        <!-- TAB 1: REVIEW QUEUE -->
+        <!-- ========================================================= -->
+        <section id="tab-cases" class="tab-content space-y-4">
+            
+            <!-- Controls & Filters -->
+            <div class="glass-card p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <h1 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-list-check text-blue-400"></i> Hàng đợi Thẩm định Rủi ro
+                    </h1>
+                    <span id="queue-count-badge" class="px-2 py-0.5 rounded-full text-xs font-mono bg-blue-900/40 text-blue-300 border border-blue-800/50">0 hồ sơ</span>
+                </div>
+
+                <div class="flex items-center gap-2.5 w-full sm:w-auto">
+                    <select id="filter-status" onchange="handleQueueFilterChange()" class="bg-slate-900 border border-gray-700 text-xs rounded-lg px-3 py-2 text-gray-200 focus:outline-none focus:border-blue-500">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="NEW">MỚI (NEW)</option>
+                        <option value="UNDER_REVIEW">Đang xử lý (UNDER_REVIEW)</option>
+                        <option value="NEEDS_MORE_INFO">Cần thêm thông tin</option>
+                        <option value="ESCALATED">Đã chuyển cấp (ESCALATED)</option>
+                        <option value="CLOSED">Đã đóng (CLOSED)</option>
+                    </select>
+
+                    <select id="filter-priority" onchange="handleQueueFilterChange()" class="bg-slate-900 border border-gray-700 text-xs rounded-lg px-3 py-2 text-gray-200 focus:outline-none focus:border-blue-500">
+                        <option value="">Tất cả mức độ</option>
+                        <option value="HIGH">Ưu tiên CAO (HIGH)</option>
+                        <option value="MEDIUM">Ưu tiên VỪA (MEDIUM)</option>
+                    </select>
+
+                    <button onclick="loadReviewQueue()" class="p-2 text-gray-400 hover:text-white bg-slate-900 border border-gray-700 rounded-lg hover:bg-slate-800 transition text-xs" title="Làm mới">
+                        <i class="fas fa-rotate"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table of Cases -->
+            <div class="glass-card overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-950/70 text-gray-400 text-xs uppercase tracking-wider border-b border-gray-800">
+                            <tr>
+                                <th class="py-3 px-4">Case ID</th>
+                                <th class="py-3 px-4">Giao dịch / Merchant</th>
+                                <th class="py-3 px-4">Số tiền & Danh mục</th>
+                                <th class="py-3 px-4">Độ ưu tiên</th>
+                                <th class="py-3 px-4">Điểm rủi ro (ML)</th>
+                                <th class="py-3 px-4">Trạng thái</th>
+                                <th class="py-3 px-4 text-right">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="queue-table-body" class="divide-y divide-gray-800/40">
+                            <!-- Render dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TAB 2: SPECIAL INSPECTION QUEUE (FR-07) -->
+        <!-- ========================================================= -->
+        <section id="tab-special" class="tab-content hidden space-y-4">
+            
+            <div class="glass-card p-4 border-l-4 border-l-amber-500 bg-amber-950/10">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-triangle-exclamation text-amber-400 text-lg mt-0.5"></i>
+                    <div>
+                        <h2 class="text-sm font-bold text-amber-300">Hàng đợi Kiểm tra Đặc biệt (Special Inspection Queue - FR-07)</h2>
+                        <p class="text-xs text-gray-300 mt-1">
+                            Các giao dịch vi phạm thẩm định dữ liệu đầu vào (Data Validation Failure: số tiền âm, sai định dạng, thiếu trường bắt buộc).
+                            Hệ thống kích hoạt Fail-safe và chuyển luồng vào <b>MANUAL_FALLBACK_UNSCORED</b> (tuyệt đối không gán nhầm sang Low Risk).
+                            Chuyên viên có thể xem xét và mở hồ sơ điều tra thủ công (Manual Case) nếu nghi ngờ hành vi thăm dò/tấn công.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-950/70 text-gray-400 text-xs uppercase tracking-wider border-b border-gray-800">
+                            <tr>
+                                <th class="py-3 px-4">Transaction ID</th>
+                                <th class="py-3 px-4">Merchant & Thẻ</th>
+                                <th class="py-3 px-4">Số tiền</th>
+                                <th class="py-3 px-4">Phân luồng</th>
+                                <th class="py-3 px-4">Lý do Lỗi (Data Validation)</th>
+                                <th class="py-3 px-4 text-right">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="special-table-body" class="divide-y divide-gray-800/40">
+                            <!-- Render dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TAB 3: TRANSACTIONS & SIMULATOR -->
+        <!-- ========================================================= -->
+        <section id="tab-transactions" class="tab-content hidden space-y-4">
+            
+            <!-- Simulator Control Card -->
+            <div class="glass-card p-5 bg-gradient-to-r from-slate-900 to-indigo-950/30">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 text-white font-bold text-base mb-1">
+                            <i class="fas fa-bolt text-amber-400"></i> Bảng Điều Khiển Simulator (Dataset Replay)
+                        </div>
+                        <p class="text-xs text-gray-400">
+                            Phát lại các giao dịch từ tập <code class="text-indigo-300 bg-indigo-950/50 px-1 py-0.5 rounded font-mono">fraudTrain.csv</code>.
+                            Nhãn thật <code class="text-rose-300 bg-rose-950/50 px-1 py-0.5 rounded font-mono">is_fraud</code> được tách riêng vào bảng <code class="text-gray-300 font-mono">delayed_labels</code> để chống Data Leakage.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex items-center gap-2 bg-slate-900 p-2 rounded-lg border border-gray-700">
+                            <span class="text-xs text-gray-400 font-medium">Số lượng:</span>
+                            <select id="sim-count" class="bg-slate-800 text-xs text-white rounded p-1 font-mono focus:outline-none">
+                                <option value="5">5 txns</option>
+                                <option value="10" selected>10 txns</option>
+                                <option value="20">20 txns</option>
+                                <option value="50">50 txns</option>
+                            </select>
+                        </div>
+
+                        <label class="flex items-center gap-2 bg-slate-900 p-2 rounded-lg border border-gray-700 text-xs text-gray-300 cursor-pointer">
+                            <input type="checkbox" id="sim-inject-fault" class="accent-red-500">
+                            <span>Tiêm lỗi tiêm thử (Fault Injection: tiền âm)</span>
+                        </label>
+
+                        <button onclick="triggerSimulation()" id="btn-run-sim" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-blue-600/30">
+                            <i class="fas fa-play mr-1"></i> Bắn Giao dịch Mô phỏng
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ingested Transactions Table -->
+            <div class="glass-card overflow-hidden">
+                <div class="px-4 py-3 border-b border-gray-800 text-xs font-semibold text-gray-300 flex items-center justify-between">
+                    <span>Toàn bộ Giao dịch đã Tiếp nhận (Transactions Table)</span>
+                    <button onclick="loadTransactions()" class="text-gray-400 hover:text-white transition text-xs">
+                        <i class="fas fa-rotate mr-1"></i> Làm mới
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-950/70 text-gray-400 text-xs uppercase tracking-wider border-b border-gray-800">
+                            <tr>
+                                <th class="py-3 px-4">Transaction ID</th>
+                                <th class="py-3 px-4">Thẻ</th>
+                                <th class="py-3 px-4">Merchant</th>
+                                <th class="py-3 px-4">Số tiền</th>
+                                <th class="py-3 px-4">Thời gian</th>
+                                <th class="py-3 px-4">Routing (ML)</th>
+                                <th class="py-3 px-4">Risk Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-table-body" class="divide-y divide-gray-800/40">
+                            <!-- Render dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TAB 4: AUDIT TRAIL (FR-08) -->
+        <!-- ========================================================= -->
+        <section id="tab-audits" class="tab-content hidden space-y-4">
+            
+            <div class="glass-card p-4 border-l-4 border-l-purple-500 bg-purple-950/10">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-fingerprint text-purple-400 text-lg mt-0.5"></i>
+                    <div>
+                        <h2 class="text-sm font-bold text-purple-300">Nhật ký Kiểm toán & Truy vết Tự động (Auditability & Traceability - FR-08)</h2>
+                        <p class="text-xs text-gray-300 mt-1">
+                            Mọi thay đổi trên hồ sơ điều tra (chuyển trạng thái, kết luận vụ việc, phân quyền) đều được Database Trigger 
+                            <code class="text-purple-300 bg-purple-950/60 px-1 py-0.5 rounded font-mono">trg_case_audit</code> tự động bắt và ghi nhận vào bảng 
+                            <code class="text-gray-300 font-mono">audit_log</code> với đầy đủ thông tin người thực hiện (Actor), trạng thái trước/sau (Before/After) và Request ID.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-950/70 text-gray-400 text-xs uppercase tracking-wider border-b border-gray-800">
+                            <tr>
+                                <th class="py-3 px-4">Thời gian</th>
+                                <th class="py-3 px-4">Người thực hiện (Actor)</th>
+                                <th class="py-3 px-4">Hành động</th>
+                                <th class="py-3 px-4">Thực thể</th>
+                                <th class="py-3 px-4">Biến động Trạng thái</th>
+                                <th class="py-3 px-4">Outcome</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audit-table-body" class="divide-y divide-gray-800/40">
+                            <!-- Render dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ========================================================= -->
+    <!-- CASE INVESTIGATION WORKSPACE MODAL / DRAWER -->
+    <!-- ========================================================= -->
+    <div id="case-detail-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-center items-start overflow-y-auto p-2 sm:p-4 md:p-6">
+        <div class="bg-slate-900 border border-gray-800 w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden my-4" id="detail-content">
+            <!-- Dynamically injected by renderCaseDetailView() -->
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- LOGIN MODAL -->
+    <!-- ========================================================= -->
+    <div id="login-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-gray-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5">
+            
+            <div class="text-center space-y-1">
+                <div class="w-12 h-12 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center mx-auto text-xl mb-2">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h2 class="text-xl font-bold text-white tracking-tight">Đăng Nhập FraudLens</h2>
+                <p class="text-xs text-gray-400">Chọn vai trò hoặc nhập thông tin đăng nhập hệ thống</p>
+            </div>
+
+            <!-- Quick login buttons -->
+            <div class="space-y-2">
+                <span class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block">Tài khoản mẫu nhanh:</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="quickLogin('analyst1', 'AnalystPassword123!')" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-left rounded-lg border border-gray-700 transition">
+                        <div class="text-xs font-bold text-blue-300">analyst1</div>
+                        <div class="text-[10px] text-gray-400">Fraud Analyst</div>
+                    </button>
+                    <button type="button" onclick="quickLogin('lead1', 'LeadPassword123!')" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-left rounded-lg border border-gray-700 transition">
+                        <div class="text-xs font-bold text-amber-300">lead1</div>
+                        <div class="text-[10px] text-gray-400">Risk Lead</div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="relative flex py-1 items-center">
+                <div class="flex-grow border-t border-gray-800"></div>
+                <span class="flex-shrink mx-2 text-[10px] text-gray-500 uppercase">Hoặc tự điền</span>
+                <div class="flex-grow border-t border-gray-800"></div>
+            </div>
+
+            <!-- Form -->
+            <form onsubmit="event.preventDefault(); submitLogin();" class="space-y-3.5">
+                <div>
+                    <label class="text-xs text-gray-300 block mb-1">Tên đăng nhập</label>
+                    <input type="text" id="login-username" value="analyst1" class="w-full bg-slate-950 border border-gray-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-300 block mb-1">Mật khẩu</label>
+                    <input type="password" id="login-password" value="AnalystPassword123!" class="w-full bg-slate-950 border border-gray-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono">
+                </div>
+
+                <div id="login-error" class="hidden text-xs text-rose-400 bg-rose-950/30 p-2.5 rounded border border-rose-900/40"></div>
+
+                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs transition shadow-lg shadow-blue-600/30">
+                    Đăng Nhập Vào Hệ Thống
+                </button>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- Frontend Scripts -->
+    <script src="/frontend/js/api.js"></script>
+    <script src="/frontend/js/app.js"></script>
+</body>
+</html>

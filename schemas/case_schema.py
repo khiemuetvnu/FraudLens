@@ -65,6 +65,11 @@ class CaseResponse(BaseModel):
     version: int
     created_at: datetime
     updated_at: datetime
+    merchant: Optional[str] = None
+    amt: Optional[Decimal] = None
+    category: Optional[str] = None
+    risk_score: Optional[Decimal] = None
+    routing: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

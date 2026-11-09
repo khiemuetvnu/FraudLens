@@ -22,6 +22,7 @@ fraud_copilot_project/
 │   ├── user_schema.py
 │   ├── transaction_schema.py
 │   └── case_schema.py
+│   └── audit_schema.py
 ├── routers/                 # FastAPI APIRouter
 │   ├── auth.py
 │   ├── transactions.py
